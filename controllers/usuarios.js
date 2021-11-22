@@ -1,35 +1,89 @@
 const { request, response } = require('express');
+const bcryptjs = require('bcryptjs');
 
-const getUsuarios = (req = request, res = response) => {
-  const { page = 1, limit = 10 } = req.query;
+const Usuario = require('../models/usuario');
 
-  res.json({ page, limit });
+const getUsuarios = async (req = request, res = response) => {
+  const { limit = 10, skip = 0 } = req.query;
+  const usuariosPromise = Usuario.find({ estado: true })
+    .limit(Number(limit))
+    .skip(Number(skip));
+
+  const cantidadPromise = Usuario.countDocuments({ estado: true });
+
+  const [cantidad, usuarios] = await Promise.all([
+    cantidadPromise,
+    usuariosPromise,
+  ]);
+
+  res.json({ limit, skip, cantidad, usuarios });
 };
 
-const postUsuarios = (req = request, res = response) => {
+const postUsuario = async (req = request, res = response) => {
+  try {
+    const { nombre, correo, password, rol } = req.body;
+
+    const existeEmail = await Usuario.findOne({ correo });
+    if (existeEmail) {
+      return res.status(401).json({
+        msg: 'El correo ya existe!',
+      });
+    }
+
+    const usuario = new Usuario({
+      nombre: nombre,
+      correo: correo,
+      password: password,
+      rol: rol,
+    });
+
+    const salt = bcryptjs.genSaltSync();
+    usuario.password = bcryptjs.hashSync(password, salt);
+
+    await usuario.save();
+
+    res.json({ usuario });
+  } catch (error) {
+    console.log('Error guardando el usuario!');
+    throw new Error('Error guardando el usuario!');
+  }
+};
+
+const putUsuario = async (req = request, res = response) => {
   const id = req.params.id;
+  const { _id, password, correo, google, ...resto } = req.body;
 
-  const { nombre, edad } = req.body;
+  if (password) {
+    const salt = bcryptjs.genSaltSync();
+    resto.password = bcryptjs.hashSync(password, salt);
+  }
 
-  res.json({ id, nombre, edad });
+  const usuario = await Usuario.findByIdAndUpdate(id, resto, { new: true });
+
+  res.json({ usuario });
 };
 
-const putUsuarios = (req, res = response) => {
-  res.json({ msg: 'put API!' });
-};
-
-const patchUsuarios = (req, res = response) => {
+const patchUsuario = (req, res = response) => {
   res.json({ msg: 'patch API' });
 };
 
-const deleteUsuarios = (req, res = response) => {
-  res.json({ msg: 'delete API!' });
+const deleteUsuario = async (req, res = response) => {
+  const { id } = req.params;
+
+  // const usuario = await Usuario.findByIdAndDelete(id);
+  const usuario = await Usuario.findByIdAndUpdate(
+    id,
+    { estado: false },
+    { new: true }
+  );
+
+  res.json(usuario);
 };
 
 module.exports = {
   getUsuarios,
-  postUsuarios,
-  putUsuarios,
-  patchUsuarios,
-  deleteUsuarios,
+  postUsuario,
+  putUsuario,
+  patchUsuario,
+  deleteUsuario,
 };
