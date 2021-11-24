@@ -30,7 +30,10 @@ const login = async (req = request, res = response) => {
     res.json({ usuario, token });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ msg: 'Hable con el administrador!' });
+    res.status(500).json({
+      log: error,
+      msg: 'Hable con el administrador!',
+    });
   }
 };
 
