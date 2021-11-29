@@ -3,12 +3,6 @@ const { check } = require('express-validator');
 
 const { validarCampos } = require('../middlewares/validar-campos');
 
-const {
-  esRoleValido,
-  emailExiste,
-  usuarioExistePorId,
-} = require('../helpers/db-validators');
-
 const { login, googleSignIn } = require('./../controllers/auth');
 
 const router = Router();

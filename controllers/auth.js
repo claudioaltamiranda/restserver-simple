@@ -2,7 +2,9 @@ const { request, response } = require('express');
 const bcryptjs = require('bcryptjs');
 
 const Usuario = require('../models/usuario');
+
 const { generarJWT } = require('../helpers/generar-jwt');
+const { googleVerify } = require('../helpers/google-verify');
 
 const login = async (req = request, res = response) => {
   try {
@@ -37,12 +39,43 @@ const login = async (req = request, res = response) => {
   }
 };
 
-const googleSignIn = (req = request, res = response, next) => {
+const googleSignIn = async (req = request, res = response) => {
   const { id_token } = req.body;
 
-  res.status(200).json({
-    id_token,
-  });
+  try {
+    const { nombre, img, correo } = await googleVerify(id_token);
+
+    let usuario = await Usuario.findOne({ correo });
+    if (!usuario) {
+      usuario = new Usuario({
+        nombre,
+        correo,
+        rol: 'USER_ROLE',
+        password: 'NO_IMPORTA',
+        img,
+        google: true,
+      });
+      await usuario.save();
+    }
+
+    if (!usuario.estado) {
+      return res.status(401).json({
+        msg: 'Usuario deshabilitado, hablar con el administrador!',
+      });
+    }
+
+    // generar el token
+    const token = await generarJWT(usuario.id);
+    console.log('JWT token: ', token);
+
+    res.status(200).json({
+      msg: 'Todo OK',
+      usuario,
+      token,
+    });
+  } catch (error) {
+    res.status(400).json({ msg: error });
+  }
 };
 
 module.exports = {

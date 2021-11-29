@@ -7,12 +7,15 @@
     <title>RESTSERVER</title>
   </head>
   <body>
-    <!-- data-login_uri="https://your.domain/your_login_endpoint" -->
-    <!-- <div
+    <h1>Google SignIn</h1>
+    <hr />
+    <div
       id="g_id_onload"
       data-client_id="1094479372823-nugmdlrnsk9le3dteaj826huj37s8j2b.apps.googleusercontent.com"
-      data-auto_prompt="false"
+      data-auto_select="true"
+      data-callback="handleCredentialResponse"
     ></div>
+
     <div
       class="g_id_signin"
       data-type="standard"
@@ -21,8 +24,10 @@
       data-text="sign_in_with"
       data-shape="rectangular"
       data-logo_alignment="left"
-    ></div> -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    ></div>
+    <div>
+      <button id="btn-logout">Logout</button>
+    </div>
     <script>
       function handleCredentialResponse(response) {
         const body = { id_token: response.credential };
@@ -30,23 +35,25 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
-        });
-        // console.log('Encoded JWT ID token: ' + response.credential);
+        })
+          .then((data) => data.json())
+          .then((data) => {
+            console.log(`Google token: ${response.credential}`);
+            localStorage.setItem('email', data.correo);
+          })
+          .catch(console.warn);
       }
 
-      window.onload = function () {
-        google.accounts.id.initialize({
-          client_id:
-            '1094479372823-nugmdlrnsk9le3dteaj826huj37s8j2b.apps.googleusercontent.com',
-          callback: handleCredentialResponse,
+      const button = document.getElementById('btn-logout');
+      button.onclick = async () => {
+        google.accounts.id.disableAutoSelect();
+        google.accounts.id.revoke(localStorage.getItem('email'), (done) => {
+          localStorage.clear();
+          location.reload();
         });
-        google.accounts.id.renderButton(
-          document.getElementById('buttonDiv'),
-          { theme: 'outline', size: 'large' } // customization attributes
-        );
-        google.accounts.id.prompt(); // also display the One Tap dialog
       };
     </script>
-    <div id="buttonDiv"></div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </body>
 </html>
